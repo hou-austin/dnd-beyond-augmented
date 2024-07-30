@@ -1,0 +1,12 @@
+.ddb-tooltip {
+  position: absolute;
+  background-color: #333;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: Roboto, Helvetica, sans-serif;
+  z-index: 1000;
+  display: none;
+  white-space: nowrap;
+}
