@@ -208,15 +208,14 @@ function getMonsterProficiencyBonus(statBlock) {
 
 function updateHitValue(hitNode, profBonus) {
   const hitText = hitNode.textContent.trim();
-  const match = hitText.match(/^(\d+)(\s*\([^)]+\))?(\s*\([^)]+\))?(.*)$/);
+  const match = hitText.match(/^(\d+)(\s*\([^)]+\))?(.*)$/);
   if (match) {
     const hitValue = parseInt(match[1]);
-    const existingCalculation = match[2] || '';
-    const damageRoll = match[3] || '';
-    const restOfText = match[4] || '';
+    const damageRoll = match[2] || '';
+    const restOfText = match[3] || '';
 
     // Check if the hit value has already been updated
-    if (existingCalculation.includes('/')) {
+    if (hitText.includes('/')) {
       return; // Already updated, do nothing
     }
 
@@ -251,56 +250,46 @@ function updateMonsterHitValues(descriptionBlock, profBonus) {
   });
 }
 
-function handleMonsterStatBlock(statBlock) {
+function observeMonsterStatBlock(statBlock) {
   const profBonus = getMonsterProficiencyBonus(statBlock);
+  const descriptionBlockContainer = statBlock.querySelector(
+    '.mon-stat-block__description-blocks'
+  );
+
+  if (!descriptionBlockContainer) return;
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'childList') {
+        const descriptionBlocks = statBlock.querySelectorAll(
+          '.mon-stat-block__description-block-content'
+        );
+        descriptionBlocks.forEach((block) =>
+          updateMonsterHitValues(block, profBonus)
+        );
+      }
+    });
+  });
+
+  observer.observe(descriptionBlockContainer, {
+    childList: true,
+    subtree: false,
+  });
+
+  // Initial update
   const descriptionBlocks = statBlock.querySelectorAll(
     '.mon-stat-block__description-block-content'
   );
-
   descriptionBlocks.forEach((block) =>
     updateMonsterHitValues(block, profBonus)
   );
 }
 
-function updateAllMonsterStatBlocks() {
-  const statBlocks = document.querySelectorAll('.mon-stat-block');
-  statBlocks.forEach(handleMonsterStatBlock);
+function handleMonsterStatBlock(statBlock) {
+  observeMonsterStatBlock(statBlock);
 }
 
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-const debouncedUpdateAllMonsterStatBlocks = debounce(
-  updateAllMonsterStatBlocks,
-  100
-);
-
-function setupButtonListeners() {
-  document.addEventListener('click', (event) => {
-    if (
-      event.target.closest('.encounter-details-summary__group-item') ||
-      event.target.closest('.encounter-details-summary__run-encounter-button')
-    ) {
-      // Wait for potential stat block updates
-      setTimeout(() => {
-        debouncedUpdateAllMonsterStatBlocks();
-      }, 100); // Changed to 200ms as requested
-    }
-  });
-}
-
-// Initial setup
-setupButtonListeners();
-updateAllMonsterStatBlocks();
+// Remove the updateAllMonsterStatBlocks function and related code
 
 function observeDOM() {
   const targetNode = document.body;
