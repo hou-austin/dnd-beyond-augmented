@@ -207,23 +207,24 @@ function getMonsterProficiencyBonus(statBlock) {
 }
 
 function updateHitValue(hitNode, profBonus) {
-  if (hitNode.nodeType === Node.TEXT_NODE) {
-    const hitText = hitNode.textContent.trim();
-    const match = hitText.match(/^(\d+)(\s*\([^)]+\))?(.*)$/);
-    if (match) {
-      const hitValue = parseInt(match[1]);
-      const damageRoll = match[2] || '';
-      const restOfText = match[3] || '';
-      const withProfBonus = hitValue + profBonus;
-      const withDoubleProfBonus = hitValue + 2 * profBonus;
+  const hitText = hitNode.textContent.trim();
+  const match = hitText.match(/^(\d+)(\s*\([^)]+\))?(\s*\([^)]+\))?(.*)$/);
+  if (match) {
+    const hitValue = parseInt(match[1]);
+    const existingCalculation = match[2] || '';
+    const damageRoll = match[3] || '';
+    const restOfText = match[4] || '';
 
-      const newHitSpan = document.createElement('span');
-      newHitSpan.textContent = ` ${hitValue} (${withProfBonus}/${withDoubleProfBonus})${damageRoll}${restOfText}`;
-      newHitSpan.dataset.enhanced = 'true';
-
-      hitNode.parentNode.insertBefore(newHitSpan, hitNode);
-      hitNode.parentNode.removeChild(hitNode);
+    // Check if the hit value has already been updated
+    if (existingCalculation.includes('/')) {
+      return; // Already updated, do nothing
     }
+
+    const withProfBonus = hitValue + profBonus;
+    const withDoubleProfBonus = hitValue + 2 * profBonus;
+
+    const newText = `${hitValue} (${withProfBonus}/${withDoubleProfBonus})${damageRoll}${restOfText}`;
+    hitNode.textContent = newText;
   }
 }
 
@@ -250,48 +251,56 @@ function updateMonsterHitValues(descriptionBlock, profBonus) {
   });
 }
 
-function observeMonsterStatBlock(statBlock) {
+function handleMonsterStatBlock(statBlock) {
   const profBonus = getMonsterProficiencyBonus(statBlock);
   const descriptionBlocks = statBlock.querySelectorAll(
     '.mon-stat-block__description-block-content'
   );
 
-  const updateAllHitValues = () => {
-    descriptionBlocks.forEach((block) =>
-      updateMonsterHitValues(block, profBonus)
-    );
+  descriptionBlocks.forEach((block) =>
+    updateMonsterHitValues(block, profBonus)
+  );
+}
+
+function updateAllMonsterStatBlocks() {
+  const statBlocks = document.querySelectorAll('.mon-stat-block');
+  statBlocks.forEach(handleMonsterStatBlock);
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
   };
+}
 
-  updateAllHitValues(); // Initial update
+const debouncedUpdateAllMonsterStatBlocks = debounce(
+  updateAllMonsterStatBlocks,
+  100
+);
 
-  const observer = new MutationObserver((mutations) => {
-    let needsUpdate = false;
-    for (const mutation of mutations) {
-      if (mutation.type === 'childList') {
-        const addedNodes = Array.from(mutation.addedNodes);
-        if (
-          addedNodes.some(
-            (node) =>
-              node.nodeType === Node.ELEMENT_NODE &&
-              !node.querySelector('[data-enhanced="true"]')
-          )
-        ) {
-          needsUpdate = true;
-          break;
-        }
-      }
-    }
-    if (needsUpdate) {
-      updateAllHitValues();
+function setupButtonListeners() {
+  document.addEventListener('click', (event) => {
+    if (
+      event.target.closest('.encounter-details-summary__group-item') ||
+      event.target.closest('.encounter-details-summary__run-encounter-button')
+    ) {
+      // Wait for potential stat block updates
+      setTimeout(() => {
+        debouncedUpdateAllMonsterStatBlocks();
+      }, 100); // Changed to 200ms as requested
     }
   });
-
-  observer.observe(statBlock, { childList: true, subtree: true });
 }
 
-function handleMonsterStatBlock(statBlock) {
-  observeMonsterStatBlock(statBlock);
-}
+// Initial setup
+setupButtonListeners();
+updateAllMonsterStatBlocks();
 
 function observeDOM() {
   const targetNode = document.body;

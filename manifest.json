@@ -1,6 +1,6 @@
 {
   "name": "D&D Beyond Augmented",
-  "version": "1.0.0.0",
+  "version": "1.0.0.1",
   "manifest_version": 3,
   "description": "Modifies D&D Beyond for a set of homebrew systems.",
   "permissions": ["activeTab"],
