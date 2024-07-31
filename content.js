@@ -290,7 +290,59 @@ const MonsterStatBlockModule = (() => {
     }
   };
 
-  return { handleMonsterStatBlock, handleMonsterACLabel };
+  const modifyMonsterHP = (hpDataSpan) => {
+    const originalHP = parseInt(hpDataSpan.textContent);
+    if (!isNaN(originalHP)) {
+      const threeQuarters = Math.floor(originalHP * 0.75);
+      const half = Math.floor(originalHP * 0.5);
+      const quarter = Math.floor(originalHP * 0.25);
+      const modifiedText = `${originalHP} (${threeQuarters}/${half}/${quarter})`;
+      if (hpDataSpan.textContent !== modifiedText) {
+        hpDataSpan.textContent = modifiedText;
+      }
+    }
+  };
+
+  const observeMonsterHP = (hpDataSpan) => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === 'characterData' ||
+          mutation.type === 'childList'
+        ) {
+          modifyMonsterHP(hpDataSpan);
+        }
+      });
+    });
+
+    observer.observe(hpDataSpan, {
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+  };
+
+  const handleMonsterHPLabel = (hpLabel) => {
+    const hpValueSpan = hpLabel.nextElementSibling;
+    if (
+      hpValueSpan &&
+      hpValueSpan.classList.contains('mon-stat-block__attribute-data')
+    ) {
+      const hpDataSpan = hpValueSpan.querySelector(
+        '.mon-stat-block__attribute-data-value'
+      );
+      if (hpDataSpan) {
+        modifyMonsterHP(hpDataSpan);
+        observeMonsterHP(hpDataSpan);
+      }
+    }
+  };
+
+  return {
+    handleMonsterStatBlock,
+    handleMonsterACLabel,
+    handleMonsterHPLabel,
+  };
 })();
 
 // DOM Observer Module
@@ -318,12 +370,20 @@ const DOMObserverModule = (() => {
                 }
               });
 
-              const acLabels = node.querySelectorAll(
-                'span.mon-stat-block__attribute-label'
+              const monsterAttributes = node.querySelectorAll(
+                '.mon-stat-block__attribute'
               );
-              acLabels.forEach((label) => {
-                if (label.textContent.trim().toLowerCase() === 'armor class') {
-                  MonsterStatBlockModule.handleMonsterACLabel(label);
+              monsterAttributes.forEach((attribute) => {
+                const label = attribute.querySelector(
+                  '.mon-stat-block__attribute-label'
+                );
+                if (label) {
+                  const labelText = label.textContent.trim().toLowerCase();
+                  if (labelText === 'armor class') {
+                    MonsterStatBlockModule.handleMonsterACLabel(label);
+                  } else if (labelText === 'hit points') {
+                    MonsterStatBlockModule.handleMonsterHPLabel(label);
+                  }
                 }
               });
 
@@ -358,10 +418,16 @@ const initializeExtension = () => {
       }
     });
   document
-    .querySelectorAll('span.mon-stat-block__attribute-label')
-    .forEach((label) => {
-      if (label.textContent.trim().toLowerCase() === 'armor class') {
-        MonsterStatBlockModule.handleMonsterACLabel(label);
+    .querySelectorAll('.mon-stat-block__attribute')
+    .forEach((attribute) => {
+      const label = attribute.querySelector('.mon-stat-block__attribute-label');
+      if (label) {
+        const labelText = label.textContent.trim().toLowerCase();
+        if (labelText === 'armor class') {
+          MonsterStatBlockModule.handleMonsterACLabel(label);
+        } else if (labelText === 'hit points') {
+          MonsterStatBlockModule.handleMonsterHPLabel(label);
+        }
       }
     });
   document
